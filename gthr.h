@@ -46,6 +46,8 @@ struct gt_context_t
 
     // Process state
     gt_thread_state_t thread_state;
+    // Thread id
+    unsigned int tid;
 };
 
 /**
@@ -106,5 +108,9 @@ void gt_pree_swtch(struct gt_regs *t_old, struct gt_regs *t_new);
  * @return int status (0 - success, -1 - failure)
  */
 int uninterruptibleNanoSleep(time_t sec, long nanosec);
+/**
+ * Get current tid
+ */
+size_t gt_gettid();
 
 #endif // __GTHR_H

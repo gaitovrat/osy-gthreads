@@ -71,6 +71,7 @@ void gt_init(void)
     g_gtcur = &g_gttbl[0];
     // Set current to running
     g_gtcur->thread_state = Running;
+    g_gtcur->tid = 0;
 #if (GT_PREEMPTIVE != 0)
     gt_sig_start();
 #endif
@@ -194,6 +195,8 @@ int gt_go(void (*t_run)(void))
     p->regs.rsp = (uint64_t)&l_stack[StackSize - 16];
     // Set state
     p->thread_state = Ready;
+    // Set tid
+    p->tid = p - &g_gttbl[0];
 
     return 0;
 }
@@ -241,4 +244,9 @@ int uninterruptibleNanoSleep(time_t t_sec, long t_nanosec)
 #endif
     // Return success
     return 0;
+}
+
+size_t gt_gettid()
+{
+    return g_gtcur->tid;
 }
