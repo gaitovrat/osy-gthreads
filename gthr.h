@@ -48,6 +48,8 @@ struct gt_context_t
     gt_thread_state_t thread_state;
     // Thread id
     unsigned int tid;
+    // Thread name
+    const char *name;
 };
 
 /**
@@ -55,12 +57,20 @@ struct gt_context_t
  */
 void gt_init(void);
 /**
- * Create new thread and set f as new "run" function
+ * Create new anonymus thread
  * 
  * @param t_run function to run on thread
  * @return int thread id
  */
 int gt_go(void (*t_run)(void));
+/**
+ * Create new thread
+ * 
+ * @param t_run function to run on thread
+ * @param name thread name
+ * @return int thread id
+ */
+int gt_go_name(void (*t_run)(void), const char *name);
 /**
  * Terminate current thread
  */
@@ -111,6 +121,10 @@ int uninterruptibleNanoSleep(time_t sec, long nanosec);
 /**
  * Get current tid
  */
-size_t gt_gettid();
+unsigned int gt_gettid();
+/**
+ * Get current name
+ */
+const char *gt_getname();
 
 #endif // __GTHR_H
