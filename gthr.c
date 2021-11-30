@@ -75,6 +75,8 @@ void gt_init(void)
     g_gtcur->tid = 0;
     // Set name
     g_gtcur->name = "GT_INIT";
+    // Set arg
+    g_gtcur->arg = NULL;
 #if (GT_PREEMPTIVE != 0)
     gt_sig_start();
 #endif
@@ -164,11 +166,11 @@ void gt_stop(void)
     gt_ret(0);
 }
 
-int gt_go(void (*t_run)(void))
+int gt_go(void (*t_run)(void), void *arg)
 {
-    return gt_go_name(t_run, "GT_ANONYMUS");
+    return gt_go_name(t_run, "GT_ANONYMUS", arg);
 }
-int gt_go_name(void (*t_run)(void), const char *name)
+int gt_go_name(void (*t_run)(void), const char *name, void *arg)
 {
     char *l_stack;
     struct gt_context_t *p;
@@ -206,6 +208,8 @@ int gt_go_name(void (*t_run)(void), const char *name)
     p->tid = p - &g_gttbl[0];
     // Set name
     p->name = name;
+    // Set arg
+    p->arg = arg;
 
     return 0;
 }
@@ -262,5 +266,10 @@ unsigned int gt_gettid()
 
 const char *gt_getname()
 {
-    g_gtcur->name;
+    return g_gtcur->name;
+}
+
+void *gt_getarg()
+{
+    return g_gtcur->arg;
 }

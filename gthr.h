@@ -50,6 +50,8 @@ struct gt_context_t
     unsigned int tid;
     // Thread name
     const char *name;
+    // Thread arg
+    void *arg;
 };
 
 /**
@@ -62,7 +64,7 @@ void gt_init(void);
  * @param t_run function to run on thread
  * @return int thread id
  */
-int gt_go(void (*t_run)(void));
+int gt_go(void (*t_run)(void), void *arg);
 /**
  * Create new thread
  * 
@@ -70,7 +72,7 @@ int gt_go(void (*t_run)(void));
  * @param name thread name
  * @return int thread id
  */
-int gt_go_name(void (*t_run)(void), const char *name);
+int gt_go_name(void (*t_run)(void), const char *name, void *arg);
 /**
  * Terminate current thread
  */
@@ -126,5 +128,8 @@ unsigned int gt_gettid();
  * Get current name
  */
 const char *gt_getname();
-
+/**
+ * Get current arg
+ */
+void *gt_getarg();
 #endif // __GTHR_H
