@@ -327,3 +327,8 @@ void gt_suspend(unsigned int tid)
     g_gttbl[tid].thread_state = Suspended;
     gt_yield();
 }
+
+void gt_resume(unsigned int tid)
+{
+    g_gttbl[tid].thread_state = Ready;
+}

@@ -144,4 +144,10 @@ void gt_task_list(char *buffer);
  * @param tid thread id
  */
 void gt_suspend(unsigned int tid)
+/**
+ * Change thread state to ready
+ * 
+ * @param tid thread id
+ */
+void gt_resume(unsigned int tid)
 #endif // __GTHR_H
