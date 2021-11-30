@@ -11,7 +11,7 @@
 enum
 {
     // Maximum number of threads, used as array size for gttbl
-    MaxGThreads = 5,
+    MaxGThreads = 10,
     // Size of stack of each thread
     StackSize = 0x400000,
     // Time period of Timer
