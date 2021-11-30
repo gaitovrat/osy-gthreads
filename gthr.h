@@ -11,7 +11,7 @@
 enum
 {
     // Maximum number of threads, used as array size for gttbl
-    MaxGThreads = 5,
+    MaxGThreads = 10,
     // Size of stack of each thread
     StackSize = 0x400000,
     // Time period of Timer
@@ -46,6 +46,12 @@ struct gt_context_t
 
     // Process state
     gt_thread_state_t thread_state;
+    // Thread id
+    unsigned int tid;
+    // Thread name
+    const char *name;
+    // Thread arg
+    void *arg;
 };
 
 /**
@@ -53,12 +59,20 @@ struct gt_context_t
  */
 void gt_init(void);
 /**
- * Create new thread and set f as new "run" function
+ * Create new anonymus thread
  * 
  * @param t_run function to run on thread
  * @return int thread id
  */
-int gt_go(void (*t_run)(void));
+int gt_go(void (*t_run)(void), void *arg);
+/**
+ * Create new thread
+ * 
+ * @param t_run function to run on thread
+ * @param name thread name
+ * @return int thread id
+ */
+int gt_go_name(void (*t_run)(void), const char *name, void *arg);
 /**
  * Terminate current thread
  */
@@ -106,5 +120,34 @@ void gt_pree_swtch(struct gt_regs *t_old, struct gt_regs *t_new);
  * @return int status (0 - success, -1 - failure)
  */
 int uninterruptibleNanoSleep(time_t sec, long nanosec);
-
+/**
+ * Get current tid
+ */
+unsigned int gt_gettid();
+/**
+ * Get current name
+ */
+const char *gt_getname();
+/**
+ * Get current arg
+ */
+void *gt_getarg();
+/**
+ * Write task list to buffer
+ * 
+ * @param buffer to what will be written
+ */
+void gt_task_list(char *buffer);
+/**
+ * Change thread state to suspend
+ * 
+ * @param tid thread id
+ */
+void gt_suspend(unsigned int tid)
+/**
+ * Change thread state to ready
+ * 
+ * @param tid thread id
+ */
+void gt_resume(unsigned int tid)
 #endif // __GTHR_H

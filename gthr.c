@@ -71,6 +71,12 @@ void gt_init(void)
     g_gtcur = &g_gttbl[0];
     // Set current to running
     g_gtcur->thread_state = Running;
+    // Set id
+    g_gtcur->tid = 0;
+    // Set name
+    g_gtcur->name = "GT_INIT";
+    // Set arg
+    g_gtcur->arg = NULL;
 #if (GT_PREEMPTIVE != 0)
     gt_sig_start();
 #endif
@@ -160,7 +166,11 @@ void gt_stop(void)
     gt_ret(0);
 }
 
-int gt_go(void (*t_run)(void))
+int gt_go(void (*t_run)(void), void *arg)
+{
+    return gt_go_name(t_run, "GT_ANONYMUS", arg);
+}
+int gt_go_name(void (*t_run)(void), const char *name, void *arg)
 {
     char *l_stack;
     struct gt_context_t *p;
@@ -194,6 +204,12 @@ int gt_go(void (*t_run)(void))
     p->regs.rsp = (uint64_t)&l_stack[StackSize - 16];
     // Set state
     p->thread_state = Ready;
+    // Set tid
+    p->tid = p - &g_gttbl[0];
+    // Set name
+    p->name = name;
+    // Set arg
+    p->arg = arg;
 
     return 0;
 }
@@ -241,4 +257,78 @@ int uninterruptibleNanoSleep(time_t t_sec, long t_nanosec)
 #endif
     // Return success
     return 0;
+}
+
+unsigned int gt_gettid()
+{
+    return g_gtcur->tid;
+}
+
+const char *gt_getname()
+{
+    return g_gtcur->name;
+}
+
+void *gt_getarg()
+{
+    return g_gtcur->arg;
+}
+
+/**
+ * Convert state to string
+ * 
+ * @param state what will be converted to string
+ * @return char* converted string
+ */
+static char *state_to_str(gt_thread_state_t state)
+{
+    switch(state) 
+    {
+        case Running:
+            return "Running";
+        case Ready:
+            return "Ready";
+        case Blocked:
+            return "Blocked";
+        case Suspended:
+            return "Suspended";
+        default:
+            return "Unused";
+    }
+}
+
+void gt_task_list(char *buffer)
+{
+    if (!buffer)
+    {
+        return;
+    }
+
+    *buffer = 0;
+
+    size_t size = sprintf(buffer, "%-10s%-25s%-25s\n", "TID", "NAME", "STATE");
+
+    for (size_t i = 0; i < MaxGThreads; ++i)
+    {
+        if (!g_gttbl[i].name)
+        {
+            continue;
+        }
+
+        size += sprintf(buffer + size, "%-10d%-25s%-25s\n",
+            g_gttbl[i].tid,
+            g_gttbl[i].name,
+            state_to_str(g_gttbl[i].thread_state));
+    }
+}
+
+void gt_suspend(unsigned int tid)
+{
+    g_gttbl[tid].thread_state = Suspended;
+    gt_yield();
+}
+
+void gt_resume(unsigned int tid)
+{
+    g_gttbl[tid].thread_state = Ready;
 }
