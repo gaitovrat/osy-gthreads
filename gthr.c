@@ -273,3 +273,51 @@ void *gt_getarg()
 {
     return g_gtcur->arg;
 }
+
+/**
+ * Convert state to string
+ * 
+ * @param state what will be converted to string
+ * @return char* converted string
+ */
+static char *state_to_str(gt_thread_state_t state)
+{
+    switch(state) 
+    {
+        case Running:
+            return "Running";
+        case Ready:
+            return "Ready";
+        case Blocked:
+            return "Blocked";
+        case Suspended:
+            return "Suspended";
+        default:
+            return "Unused";
+    }
+}
+
+void gt_task_list(char *buffer)
+{
+    if (!buffer)
+    {
+        return;
+    }
+
+    *buffer = 0;
+
+    size_t size = sprintf(buffer, "%-10s%-25s%-25s\n", "TID", "NAME", "STATE");
+
+    for (size_t i = 0; i < MaxGThreads; ++i)
+    {
+        if (!g_gttbl[i].name)
+        {
+            continue;
+        }
+
+        size += sprintf(buffer + size, "%-10d%-25s%-25s\n",
+            g_gttbl[i].tid,
+            g_gttbl[i].name,
+            state_to_str(g_gttbl[i].thread_state));
+    }
+}

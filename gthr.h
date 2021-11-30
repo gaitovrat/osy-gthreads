@@ -132,4 +132,10 @@ const char *gt_getname();
  * Get current arg
  */
 void *gt_getarg();
+/**
+ * Write task list to buffer
+ * 
+ * @param buffer to what will be written
+ */
+void gt_task_list(char *buffer);
 #endif // __GTHR_H
