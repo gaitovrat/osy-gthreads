@@ -1,4 +1,3 @@
-
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,148 +11,194 @@
 
 #include "gthr.h"
 
-struct gt_context_t g_gttbl[ MaxGThreads ]; // statically allocated table for thread control
-struct gt_context_t * g_gtcur;              // pointer to current thread
+// Statically allocated table for thread control
+struct gt_context_t g_gttbl[MaxGThreads];
+// Pointer to current thread
+struct gt_context_t *g_gtcur;
 
+#if (GT_PREEMPTIVE != 0)
+/**
+ * Handle signale
+ * 
+ * @param t_sig signal to handle
+ */
+void gt_sig_handle(int t_sig);
 
-#if ( GT_PREEMPTIVE != 0 )
-
-void gt_sig_handle( int t_sig );
-
-// initialize SIGALRM
-void gt_sig_start( void )
+/**
+ * Initialize SIGALRM
+ */
+void gt_sig_start(void)
 {
     struct sigaction l_sig_act;
-    bzero( &l_sig_act, sizeof( l_sig_act ) );
+    bzero(&l_sig_act, sizeof(l_sig_act));
     l_sig_act.sa_handler = gt_sig_handle;
 
-    sigaction( SIGALRM, &l_sig_act, NULL );
-    ualarm( TimePeriod * 1000, TimePeriod * 1000 );
+    sigaction(SIGALRM, &l_sig_act, NULL);
+    ualarm(TimePeriod * 1000, TimePeriod * 1000);
 }
 
-// unblock SIGALRM
-void gt_sig_reset( void ) 
+/**
+ * Unblock SIGALRM
+ */
+void gt_sig_reset(void)
 {
-    sigset_t l_set;                     // Create signal set
-    sigemptyset( & l_set );             // Clear it
-    sigaddset( & l_set, SIGALRM );      // Set signal (we use SIGALRM)
+    // Create signal set
+    sigset_t l_set;
+    // Clear it
+    sigemptyset(&l_set);
+    // Set signal (we use SIGALRM)
+    sigaddset(&l_set, SIGALRM);
 
-    sigprocmask( SIG_UNBLOCK, & l_set, NULL );  // Fetch and change the signal mask
+    // Fetch and change the signal mask
+    sigprocmask(SIG_UNBLOCK, &l_set, NULL);
 }
 
-// function triggered periodically by timer (SIGALRM)
-void gt_sig_handle( int t_sig ) 
+void gt_sig_handle(int t_sig)
 {
-    gt_sig_reset();                     // enable SIGALRM again
+    // Enable SIGALRM again
+    gt_sig_reset();
 
     // .... manage timers here
 
-    gt_yield();                         // scheduler
+    // Scheduler
+    gt_yield();
 }
-
 #endif
 
-// initialize first thread as current context (and start timer)
-void gt_init( void ) 
+void gt_init(void)
 {
-    g_gtcur = & g_gttbl[ 0 ];           // initialize current thread with thread #0
-    g_gtcur -> thread_state = Running;  // set current to running
-#if ( GT_PREEMPTIVE != 0 )
+    // Initialize current thread with thread #0
+    g_gtcur = &g_gttbl[0];
+    // Set current to running
+    g_gtcur->thread_state = Running;
+#if (GT_PREEMPTIVE != 0)
     gt_sig_start();
 #endif
 }
 
-
-// exit thread
-void gt_ret( int t_ret ) 
+void gt_ret(int t_ret)
 {
-    if ( g_gtcur != & g_gttbl[ 0 ] )    // if not an initial thread,
+    // If not an initial thread
+    if (g_gtcur != &g_gttbl[0])
     {
-        g_gtcur -> thread_state = Unused;// set current thread as unused
-        gt_yield();                     // yield and make possible to switch to another thread
-        assert( !"reachable" );         // this code should never be reachable ... (if yes, returning function on stack was corrupted)
+        // Set current thread as unused
+        g_gtcur->thread_state = Unused;
+        // Yield and make possible to switch to another thread
+        gt_yield();
+        // This code should never be reachable ... (if yes, returning function on stack was corrupted)
+        assert(!"reachable");
     }
 }
 
-void gt_scheduler( void )
+void gt_scheduler(void)
 {
-    while ( gt_yield() )                // if initial thread, wait for other to terminate
+    // If initial thread, wait for other to terminate
+    while (gt_yield())
     {
-        if ( GT_PREEMPTIVE )
-            usleep( TimePeriod * 1000 );// idle, simulate CPU HW sleep
+        if (GT_PREEMPTIVE)
+        {
+            // Idle, simulate CPU HW sleep
+            usleep(TimePeriod * 1000);
+        }
     }
 }
 
-
-// switch from one thread to other
-int gt_yield( void ) 
+int gt_yield(void)
 {
-    struct gt_context_t * p;
-    struct gt_regs * l_old, * l_new;
-    int l_no_ready = 0;                 // not ready processes
+    struct gt_context_t *p;
+    struct gt_regs *l_old, *l_new;
+    // Not ready processes
+    int l_no_ready = 0;
 
     p = g_gtcur;
-    while ( p -> thread_state != Ready )// iterate through g_gttbl[] until we find new thread in state Ready 
+    // Iterate through g_gttbl[] until we find new thread in state Ready
+    while (p->thread_state != Ready)
     {
-        if ( p -> thread_state == Blocked || p -> thread_state == Suspended ) 
-            l_no_ready++;               // number of Blocked and Suspend processes
-
-        if ( ++p == & g_gttbl[ MaxGThreads ] )// at the end rotate to the beginning
-            p = & g_gttbl[ 0 ];
-        if ( p == g_gtcur )             // did not find any other Ready threads
+        if (p->thread_state == Blocked || p->thread_state == Suspended)
         {
-            return - l_no_ready;        // no task ready, or task table empty
+            // Number of Blocked and Suspend processes
+            l_no_ready++;
+        }
+
+        // At the end rotate to the beginning
+        if (++p == &g_gttbl[MaxGThreads])
+        {
+            p = &g_gttbl[0];
+        }
+        // Did not find any other Ready threads
+        if (p == g_gtcur)
+        {
+            // No task ready, or task table empty
+            return -l_no_ready;
         }
     }
 
-    if ( g_gtcur -> thread_state == Running )// switch current to Ready and new thread found in previous loop to Running
-        g_gtcur -> thread_state = Ready;
-    p -> thread_state = Running;
-    l_old = & g_gtcur -> regs;          // prepare pointers to context of current (will become old) 
-    l_new = & p -> regs;                // and new to new thread found in previous loop
-    g_gtcur = p;                        // switch current indicator to new thread
-#if ( GT_PREEMPTIVE != 0 )
-    gt_pree_swtch( l_old, l_new );      // perform context switch (assembly in gtswtch.S)
+    // Switch current to Ready and new thread found in previous loop to Running
+    if (g_gtcur->thread_state == Running)
+    {
+        g_gtcur->thread_state = Ready;
+    }
+    p->thread_state = Running;
+    // Prepare pointers to context of current (will become old)
+    l_old = &g_gtcur->regs;
+    // And new to new thread found in previous loop
+    l_new = &p->regs;
+    // Switch current indicator to new thread
+    g_gtcur = p;
+#if (GT_PREEMPTIVE != 0)
+    // Perform context switch (assembly in gtswtch.S)
+    gt_pree_swtch(l_old, l_new);
 #else
-    gt_swtch( l_old, l_new );           // perform context switch (assembly in gtswtch.S)
+    // {erform context switch (assembly in gtswtch.S)
+    gt_swtch(l_old, l_new);
 #endif
     return 1;
 }
 
-
-// return function for terminating thread
-void gt_stop( void ) 
+void gt_stop(void)
 {
-    gt_ret( 0 );
+    gt_ret(0);
 }
 
-
-// create new thread by providing pointer to function that will act like "run" method
-int gt_go( void ( * t_run )( void ) ) 
+int gt_go(void (*t_run)(void))
 {
-    char * l_stack;
-    struct gt_context_t * p;
-    
-    for ( p = & g_gttbl[ 0 ];; p++ )            // find an empty slot
-        if ( p == & g_gttbl[ MaxGThreads ] )    // if we have reached the end, gttbl is full and we cannot create a new thread
+    char *l_stack;
+    struct gt_context_t *p;
+
+    // Find an empty slot
+    for (p = &g_gttbl[0];; p++)
+    {
+        // If we have reached the end, gttbl is full and we cannot create a new thread
+        if (p == &g_gttbl[MaxGThreads])
+        {
             return -1;
-        else if ( p -> thread_state == Unused )
-            break;                              // new slot was found
-
-    l_stack = ( char * ) malloc( StackSize );   // allocate memory for stack of newly created thread
-    if ( !l_stack )
+        }
+        else if (p->thread_state == Unused)
+        {
+            // New slot was found
+            break;
+        }
+    }
+    // Allocate memory for stack of newly created thread
+    l_stack = (char *)malloc(StackSize);
+    if (!l_stack)
+    {
         return -1;
+    }
 
-    *( uint64_t * ) & l_stack[ StackSize - 8 ] = ( uint64_t ) gt_stop;  //  put into the stack returning function gt_stop in case function calls return
-    *( uint64_t * ) & l_stack[ StackSize - 16 ] = ( uint64_t ) t_run;   //  put provided function as a main "run" function
-    p -> regs.rsp = ( uint64_t ) & l_stack[ StackSize - 16 ];           //  set stack pointer
-    p -> thread_state = Ready;                                          //  set state
+    // Put into the stack returning function gt_stop in case function calls return
+    *(uint64_t *)&l_stack[StackSize - 8] = (uint64_t)gt_stop;
+    // Put provided function as a main "run" function
+    *(uint64_t *)&l_stack[StackSize - 16] = (uint64_t)t_run;
+    // Set stack pointer
+    p->regs.rsp = (uint64_t)&l_stack[StackSize - 16];
+    // Set state
+    p->thread_state = Ready;
 
     return 0;
 }
 
-
-int uninterruptibleNanoSleep( time_t t_sec, long t_nanosec ) 
+int uninterruptibleNanoSleep(time_t t_sec, long t_nanosec)
 {
 #if 0
     struct timeval l_tv_cur, l_tv_limit;
@@ -180,16 +225,20 @@ int uninterruptibleNanoSleep( time_t t_sec, long t_nanosec )
     struct timespec req;
     req.tv_sec = t_sec;
     req.tv_nsec = t_nanosec;
-    
-    do {
-        if (0 != nanosleep( & req, & req)) {
-        if (errno != EINTR)
-            return -1;
-        } else {
+
+    do
+    {
+        if (0 != nanosleep(&req, &req))
+        {
+            if (errno != EINTR)
+                return -1;
+        }
+        else
+        {
             break;
         }
     } while (req.tv_sec > 0 || req.tv_nsec > 0);
 #endif
-    return 0; /* Return success */
+    // Return success
+    return 0;
 }
-
