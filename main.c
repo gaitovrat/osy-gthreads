@@ -8,30 +8,33 @@
 
 #define COUNT 100
 
-void f(void) {
+void f(void)
+{
     int count = COUNT;
     int *arg = gt_getarg();
-    
-    while ( count-- )
+
+    while (count--)
     {
         if (arg != NULL)
         {
             gt_suspend(*arg);
-        } else
+        }
+        else
         {
             printf("%s\n", gt_getname());
         }
-        uninterruptibleNanoSleep( 0, 1000000 );
+        uninterruptibleNanoSleep(0, 1000000);
 #if (GT_PREEMPTIVE == 0)
         gt_yield();
 #endif
     }
 }
 
-void g(void) {
+void g(void)
+{
     while (1)
     {
-        uninterruptibleNanoSleep( 0, 1000000 );
+        uninterruptibleNanoSleep(0, 1000000);
 #if (GT_PREEMPTIVE == 0)
         gt_yield();
 #endif
@@ -44,7 +47,7 @@ void list(void)
     int size;
     int *arg = gt_getarg();
 
-    while(1)
+    while (1)
     {
         size = read(STDIN_FILENO, buffer, 1);
         if (size == -1 || (*buffer != '\n' && *buffer != 'c'))
@@ -56,20 +59,21 @@ void list(void)
         {
             gt_task_list(buffer);
             printf("%s", buffer);
-        } else
+        }
+        else
         {
             gt_resume(*arg);
         }
     }
 }
-int main(void) 
+int main(void)
 {
-    gt_init();      
-    int tid1 = gt_go_name("F1", f, NULL);     
-    gt_go_name("F2", f, &tid1);    
-    gt_go(g, NULL);   
-    gt_go_name("list", list, &tid1);
-    gt_scheduler(); 
+    gt_init();
+    int tid1 = gt_go_name(f, "F1", NULL);
+    gt_go_name(f, "F2", &tid1);
+    gt_go(g, NULL);
+    gt_go_name(list, "list", &tid1);
+    gt_scheduler();
 
-    printf( "Threads finished\n" );
+    printf("Threads finished\n");
 }

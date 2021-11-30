@@ -211,7 +211,7 @@ int gt_go_name(void (*t_run)(void), const char *name, void *arg)
     // Set arg
     p->arg = arg;
 
-    return 0;
+    return p->tid;
 }
 
 int uninterruptibleNanoSleep(time_t t_sec, long t_nanosec)
