@@ -8,54 +8,68 @@
 
 #define COUNT 100
 
-// Dummy function to simulate some thread work
-void f(void)
-{
-    static int x;
+void f(void) {
     int count = COUNT;
-    int id = ++x;
-
-    while (count--)
+    int *arg = gt_getarg();
+    
+    while ( count-- )
     {
-        printf("F Thread id: %d count: %d\n", id, count);
-        uninterruptibleNanoSleep(0, 1000000);
+        if (arg != NULL)
+        {
+            gt_suspend(*arg);
+        } else
+        {
+            printf("%s\n", gt_getname());
+        }
+        uninterruptibleNanoSleep( 0, 1000000 );
 #if (GT_PREEMPTIVE == 0)
         gt_yield();
 #endif
     }
 }
 
-// Dummy function to simulate some thread work
-void g(void)
-{
-    static int x = 0;
-    int count = COUNT;
-    int id = ++x;
-
-    while (count--)
+void g(void) {
+    while (1)
     {
-        printf("G Thread id: %d count: %d\n", id, count);
-        uninterruptibleNanoSleep(0, 1000000);
+        uninterruptibleNanoSleep( 0, 1000000 );
 #if (GT_PREEMPTIVE == 0)
         gt_yield();
 #endif
     }
 }
 
-int main(void)
+void list(void)
 {
-    // Initialize threads, see gthr.c
-    gt_init();
-    // Set f() as first thread
-    gt_go(f);
-    // Set f() as second thread
-    gt_go(f);
-    // Set g() as third thread
-    gt_go(g);
-    // Set g() as fourth thread
-    gt_go(g);
-    // Wait until all threads terminate
-    gt_scheduler();
+    char buffer[10000];
+    int size;
+    int *arg = gt_getarg();
 
-    printf("Threads finished\n");
+    while(1)
+    {
+        size = read(STDIN_FILENO, buffer, 1);
+        if (size == -1 || (*buffer != '\n' && *buffer != 'c'))
+        {
+            continue;
+        }
+
+        if (*buffer == '\n')
+        {
+            gt_task_list(buffer);
+            printf("%s", buffer);
+        } else
+        {
+            gt_resume(*arg);
+        }
+    }
+}
+int main(void) 
+{
+    gt_init();      
+    int tid1 = gt_go_name("F1", f, NULL);     
+    gt_go_name("F2", f, &tid1);    
+    gt_go(g, NULL);   
+    gt_go_name("list", list, &tid1);
+    gt_scheduler(); 
+
+    printf( "Threads finished\n" );
 }
