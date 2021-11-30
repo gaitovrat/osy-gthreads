@@ -138,4 +138,10 @@ void *gt_getarg();
  * @param buffer to what will be written
  */
 void gt_task_list(char *buffer);
+/**
+ * Change thread state to suspend
+ * 
+ * @param tid thread id
+ */
+void gt_suspend(unsigned int tid)
 #endif // __GTHR_H

@@ -321,3 +321,9 @@ void gt_task_list(char *buffer)
             state_to_str(g_gttbl[i].thread_state));
     }
 }
+
+void gt_suspend(unsigned int tid)
+{
+    g_gttbl[tid].thread_state = Suspended;
+    gt_yield();
+}
