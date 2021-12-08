@@ -52,6 +52,12 @@ struct gt_context_t
     const char *name;
     // Thread arg
     void *arg;
+    // Timer
+    int timer;
+    // Ticks
+    int ticks;
+    // Priorita
+    int priorita;
 };
 
 /**
@@ -64,7 +70,7 @@ void gt_init(void);
  * @param t_run function to run on thread
  * @return int thread id
  */
-int gt_go(void (*t_run)(void), void *arg);
+int gt_go(void (*t_run)(void), void *arg, int priorita);
 /**
  * Create new thread
  * 
@@ -72,7 +78,7 @@ int gt_go(void (*t_run)(void), void *arg);
  * @param name thread name
  * @return int thread id
  */
-int gt_go_name(void (*t_run)(void), const char *name, void *arg);
+int gt_go_name(void (*t_run)(void), const char *name, void *arg, int priorita);
 /**
  * Terminate current thread
  */
@@ -124,7 +130,7 @@ int uninterruptibleNanoSleep(time_t sec, long nanosec);
  * Get current tid
  */
 unsigned int gt_gettid();
-/**
+/**count--
  * Get current name
  */
 const char *gt_getname();
@@ -150,4 +156,8 @@ void gt_suspend(unsigned int tid);
  * @param tid thread id
  */
 void gt_resume(unsigned int tid);
+/**
+ * Block task
+ */
+void gt_task_delay(int t_ticks);
 #endif // __GTHR_H

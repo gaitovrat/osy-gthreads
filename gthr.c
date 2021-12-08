@@ -16,6 +16,8 @@ struct gt_context_t g_gttbl[MaxGThreads];
 // Pointer to current thread
 struct gt_context_t *g_gtcur;
 
+static char *state_to_str(gt_thread_state_t state);
+
 #if (GT_PREEMPTIVE != 0)
 /**
  * Handle signale
@@ -23,6 +25,8 @@ struct gt_context_t *g_gtcur;
  * @param t_sig signal to handle
  */
 void gt_sig_handle(int t_sig);
+
+static void gt_manage_timers();
 
 /**
  * Initialize SIGALRM
@@ -59,9 +63,12 @@ void gt_sig_handle(int t_sig)
     gt_sig_reset();
 
     // .... manage timers here
+    g_gtcur->ticks++;
+    gt_manage_timers();
 
     // Scheduler
-    gt_yield();
+    if ((g_gtcur->ticks % g_gtcur->priorita) == 0)
+        gt_yield();
 }
 #endif
 
@@ -77,6 +84,8 @@ void gt_init(void)
     g_gtcur->name = "GT_INIT";
     // Set arg
     g_gtcur->arg = NULL;
+    // Priorita
+    g_gtcur->priorita = 1;
 #if (GT_PREEMPTIVE != 0)
     gt_sig_start();
 #endif
@@ -101,6 +110,7 @@ void gt_scheduler(void)
     // If initial thread, wait for other to terminate
     while (gt_yield())
     {
+        g_gtcur->ticks++;
         if (GT_PREEMPTIVE)
         {
             // Idle, simulate CPU HW sleep
@@ -117,6 +127,7 @@ int gt_yield(void)
     int l_no_ready = 0;
 
     p = g_gtcur;
+
     // Iterate through g_gttbl[] until we find new thread in state Ready
     while (p->thread_state != Ready)
     {
@@ -166,11 +177,11 @@ void gt_stop(void)
     gt_ret(0);
 }
 
-int gt_go(void (*t_run)(void), void *arg)
+int gt_go(void (*t_run)(void), void *arg, int priorita)
 {
-    return gt_go_name(t_run, "GT_ANONYMUS", arg);
+    return gt_go_name(t_run, "GT_ANONYMUS", arg, priorita);
 }
-int gt_go_name(void (*t_run)(void), const char *name, void *arg)
+int gt_go_name(void (*t_run)(void), const char *name, void *arg, int priorita)
 {
     char *l_stack;
     struct gt_context_t *p;
@@ -210,6 +221,8 @@ int gt_go_name(void (*t_run)(void), const char *name, void *arg)
     p->name = name;
     // Set arg
     p->arg = arg;
+    // Set priorita
+    p->priorita = priorita;
 
     return p->tid;
 }
@@ -280,22 +293,6 @@ void *gt_getarg()
  * @param state what will be converted to string
  * @return char* converted string
  */
-static char *state_to_str(gt_thread_state_t state)
-{
-    switch(state) 
-    {
-        case Running:
-            return "Running";
-        case Ready:
-            return "Ready";
-        case Blocked:
-            return "Blocked";
-        case Suspended:
-            return "Suspended";
-        default:
-            return "Unused";
-    }
-}
 
 void gt_task_list(char *buffer)
 {
@@ -306,7 +303,7 @@ void gt_task_list(char *buffer)
 
     *buffer = 0;
 
-    size_t size = sprintf(buffer, "%-10s%-25s%-25s\n", "TID", "NAME", "STATE");
+    size_t size = sprintf(buffer, "%-10s%-25s%-10s%-10s%-25s\n", "TID", "NAME", "TICKS", "PRIOR", "STATE");
 
     for (size_t i = 0; i < MaxGThreads; ++i)
     {
@@ -315,10 +312,12 @@ void gt_task_list(char *buffer)
             continue;
         }
 
-        size += sprintf(buffer + size, "%-10d%-25s%-25s\n",
-            g_gttbl[i].tid,
-            g_gttbl[i].name,
-            state_to_str(g_gttbl[i].thread_state));
+        size += sprintf(buffer + size, "%-10d%-25s%-10d%-10d%-25s\n",
+                        g_gttbl[i].tid,
+                        g_gttbl[i].name,
+                        g_gttbl[i].ticks,
+                        g_gttbl[i].priorita,
+                        state_to_str(g_gttbl[i].thread_state));
     }
 }
 
@@ -331,4 +330,39 @@ void gt_suspend(unsigned int tid)
 void gt_resume(unsigned int tid)
 {
     g_gttbl[tid].thread_state = Ready;
+}
+
+void gt_task_delay(int t_ticks)
+{
+    g_gtcur->thread_state = Blocked;
+    g_gtcur->timer = t_ticks;
+    gt_yield();
+}
+
+void gt_manage_timers()
+{
+    for (int i = 0; i < MaxGThreads; ++i)
+    {
+        if (g_gttbl[i].timer)
+            g_gttbl[i].timer--;
+        if (g_gttbl[i].timer == 0 && g_gttbl[i].thread_state == Blocked)
+            g_gttbl[i].thread_state = Ready;
+    }
+}
+
+char *state_to_str(gt_thread_state_t state)
+{
+    switch (state)
+    {
+    case Running:
+        return "Running";
+    case Ready:
+        return "Ready";
+    case Blocked:
+        return "Blocked";
+    case Suspended:
+        return "Suspended";
+    default:
+        return "Unused";
+    }
 }
